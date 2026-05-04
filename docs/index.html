@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Expiry Monitor Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .status-ok { background: #4CAF50; }
+        .status-warning { background: #FF9800; }
+        .status-critical { background: #F44336; }
+        .status-unknown { background: #9E9E9E; }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .card-subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .status-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .logs-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logs-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-left: 4px solid #ddd;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .log-entry.success { border-left-color: #4CAF50; }
+        .log-entry.warning { border-left-color: #FF9800; }
+        .log-entry.error { border-left-color: #F44336; }
+
+        .log-time {
+            font-size: 0.8rem;
+            color: #666;
+            margin-right: 15px;
+            min-width: 120px;
+        }
+
+        .log-message {
+            flex: 1;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .github-link {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .github-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="https://github.com" class="github-link" target="_blank">
+        <i class="fab fa-github"></i> View on GitHub
+    </a>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-shield-alt"></i> Token Monitor Dashboard</h1>
+            <p>Theo dõi trạng thái token OAuth2 real-time</p>
+        </div>
+
+        <div class="dashboard">
+            <!-- Token Status Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon status-unknown" id="tokenStatusIcon">
+                        <i class="fas fa-question"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">Token Status</div>
+                        <div class="card-subtitle" id="tokenUrl">Đang kiểm tra...</div>
+                    </div>
+                </div>
+                <div class="status-info">
+                    <div class="info-item">
+                        <div class="info-value" id="daysLeft">--</div>
+                        <div class="info-label">Ngày còn lại</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="expiryDate">--</div>
+                        <div class="info-label">Ngày hết hạn</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GitHub Actions Status -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon status-unknown" id="actionsStatusIcon">
+                        <i class="fab fa-github"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">GitHub Actions</div>
+                        <div class="card-subtitle">Workflow status</div>
+                    </div>
+                </div>
+                <div class="status-info">
+                    <div class="info-item">
+                        <div class="info-value" id="lastRun">--</div>
+                        <div class="info-label">Lần chạy cuối</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="nextRun">--</div>
+                        <div class="info-label">Lần chạy tiếp</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications Status -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon status-ok" id="notificationIcon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <div>
+                        <div class="card-title">Notifications</div>
+                        <div class="card-subtitle">Trạng thái thông báo</div>
+                    </div>
+                </div>
+                <div class="status-info">
+                    <div class="info-item">
+                        <div class="info-value" id="slackStatus">--</div>
+                        <div class="info-label">Slack</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="discordStatus">--</div>
+                        <div class="info-label">Discord</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="logs-section">
+            <div class="logs-header">
+                <h2 class="logs-title"><i class="fas fa-history"></i> Activity Logs</h2>
+                <button class="refresh-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div id="logsContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Đang tải dữ liệu...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN_URL = 'https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb';
+        const GITHUB_API_BASE = 'https://api.github.com/repos';
+        
+        // Thay đổi thông tin repo của bạn
+        const REPO_OWNER = 'your-username';
+        const REPO_NAME = 'your-repo-name';
+
+        let refreshInterval;
+
+        async function checkTokenStatus() {
+            try {
+                document.getElementById('tokenUrl').textContent = TOKEN_URL;
+                
+                const response = await fetch(TOKEN_URL);
+                const data = await response.json();
+                
+                // Tìm expiry field
+                const expiryFields = ['expires_at', 'expiry', 'exp', 'expiration', 'expires_in'];
+                let expiryTime = null;
+                
+                for (const field of expiryFields) {
+                    if (data[field]) {
+                        expiryTime = data[field];
+                        break;
+                    }
+                }
+                
+                if (expiryTime) {
+                    let expiryDate;
+                    if (typeof expiryTime === 'number') {
+                        expiryDate = expiryTime > 1000000000000 ? 
+                            new Date(expiryTime) : new Date(expiryTime * 1000);
+                    } else {
+                        expiryDate = new Date(expiryTime);
+                    }
+                    
+                    const now = new Date();
+                    const daysLeft = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
+                    
+                    document.getElementById('daysLeft').textContent = daysLeft;
+                    document.getElementById('expiryDate').textContent = expiryDate.toLocaleDateString('vi-VN');
+                    
+                    // Update status icon
+                    const statusIcon = document.getElementById('tokenStatusIcon');
+                    const statusIconElement = statusIcon.querySelector('i');
+                    
+                    if (daysLeft <= 0) {
+                        statusIcon.className = 'card-icon status-critical';
+                        statusIconElement.className = 'fas fa-exclamation-triangle';
+                    } else if (daysLeft <= 7) {
+                        statusIcon.className = 'card-icon status-warning';
+                        statusIconElement.className = 'fas fa-exclamation-circle';
+                    } else {
+                        statusIcon.className = 'card-icon status-ok';
+                        statusIconElement.className = 'fas fa-check-circle';
+                    }
+                } else {
+                    throw new Error('Không tìm thấy thông tin expiry');
+                }
+                
+            } catch (error) {
+                console.error('Error checking token:', error);
+                document.getElementById('daysLeft').textContent = 'Error';
+                document.getElementById('expiryDate').textContent = 'N/A';
+                
+                const statusIcon = document.getElementById('tokenStatusIcon');
+                statusIcon.className = 'card-icon status-critical';
+                statusIcon.querySelector('i').className = 'fas fa-times-circle';
+            }
+        }
+
+        async function checkGitHubActions() {
+            try {
+                // Kiểm tra workflow runs
+                const response = await fetch(`${GITHUB_API_BASE}/${REPO_OWNER}/${REPO_NAME}/actions/workflows`);
+                const data = await response.json();
+                
+                // Tìm workflow token expiry check
+                const tokenWorkflow = data.workflows?.find(w => 
+                    w.name.includes('Token') || w.path.includes('token-expiry')
+                );
+                
+                if (tokenWorkflow) {
+                    const runsResponse = await fetch(`${GITHUB_API_BASE}/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${tokenWorkflow.id}/runs?per_page=1`);
+                    const runsData = await runsResponse.json();
+                    
+                    if (runsData.workflow_runs?.length > 0) {
+                        const lastRun = runsData.workflow_runs[0];
+                        document.getElementById('lastRun').textContent = 
+                            new Date(lastRun.created_at).toLocaleString('vi-VN');
+                        
+                        // Calculate next run (every 6 hours)
+                        const nextRun = new Date(lastRun.created_at);
+                        nextRun.setHours(nextRun.getHours() + 6);
+                        document.getElementById('nextRun').textContent = 
+                            nextRun.toLocaleString('vi-VN');
+                        
+                        // Update status
+                        const statusIcon = document.getElementById('actionsStatusIcon');
+                        if (lastRun.status === 'completed' && lastRun.conclusion === 'success') {
+                            statusIcon.className = 'card-icon status-ok';
+                        } else if (lastRun.status === 'in_progress') {
+                            statusIcon.className = 'card-icon status-warning';
+                        } else {
+                            statusIcon.className = 'card-icon status-critical';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking GitHub Actions:', error);
+                document.getElementById('lastRun').textContent = 'N/A';
+                document.getElementById('nextRun').textContent = 'N/A';
+            }
+        }
+
+        function updateNotificationStatus() {
+            // Giả lập trạng thái notification (có thể kết nối với API thực tế)
+            document.getElementById('slackStatus').textContent = '✓';
+            document.getElementById('discordStatus').textContent = '✓';
+        }
+
+        function generateMockLogs() {
+            const logs = [
+                { time: new Date(), type: 'success', message: 'Token check completed successfully - 45 days remaining' },
+                { time: new Date(Date.now() - 6*60*60*1000), type: 'success', message: 'Token check completed successfully - 45 days remaining' },
+                { time: new Date(Date.now() - 12*60*60*1000), type: 'success', message: 'Token check completed successfully - 45 days remaining' },
+                { time: new Date(Date.now() - 18*60*60*1000), type: 'warning', message: 'Slack notification failed - webhook timeout' },
+                { time: new Date(Date.now() - 24*60*60*1000), type: 'success', message: 'Token check completed successfully - 46 days remaining' }
+            ];
+            
+            const logsContainer = document.getElementById('logsContainer');
+            logsContainer.innerHTML = logs.map(log => `
+                <div class="log-entry ${log.type}">
+                    <div class="log-time">${log.time.toLocaleString('vi-VN')}</div>
+                    <div class="log-message">${log.message}</div>
+                </div>
+            `).join('');
+        }
+
+        async function refreshData() {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            refreshBtn.disabled = true;
+            
+            try {
+                await Promise.all([
+                    checkTokenStatus(),
+                    checkGitHubActions(),
+                    updateNotificationStatus()
+                ]);
+                generateMockLogs();
+            } finally {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.disabled = false;
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+            
+            // Auto refresh every 5 minutes
+            refreshInterval = setInterval(refreshData, 5 * 60 * 1000);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

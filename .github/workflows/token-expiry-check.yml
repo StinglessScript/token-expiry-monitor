@@ -1,0 +1,31 @@
+name: Token Expiry Check
+
+on:
+  schedule:
+    # Chạy mỗi 6 tiếng (4 lần/ngày)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Cho phép chạy thủ công
+
+jobs:
+  check-token-expiry:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install axios
+      
+    - name: Check token expiry
+      env:
+        TOKEN_URL: ${{ secrets.TOKEN_URL }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        EMAIL_SERVICE_URL: ${{ secrets.EMAIL_SERVICE_URL }}
+      run: node .github/scripts/check-token.js

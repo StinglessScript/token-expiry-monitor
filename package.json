@@ -1,0 +1,16 @@
+{
+  "name": "token-expiry-monitor",
+  "version": "1.0.0",
+  "description": "GitHub Action to monitor OAuth token expiry",
+  "main": ".github/scripts/check-token.js",
+  "scripts": {
+    "check-token": "node .github/scripts/check-token.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "keywords": ["oauth", "token", "monitoring", "github-actions"],
+  "author": "",
+  "license": "MIT"
+}

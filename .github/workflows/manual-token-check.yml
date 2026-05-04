@@ -1,0 +1,43 @@
+name: Manual Token Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      token_url:
+        description: 'Token URL to check (optional - uses default if empty)'
+        required: false
+        type: string
+      force_notification:
+        description: 'Force send notification regardless of expiry time'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  manual-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install axios
+      
+    - name: Manual token check
+      env:
+        TOKEN_URL: ${{ inputs.token_url || secrets.TOKEN_URL || 'https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb' }}
+        FORCE_NOTIFICATION: ${{ inputs.force_notification }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        EMAIL_SERVICE_URL: ${{ secrets.EMAIL_SERVICE_URL }}
+      run: |
+        echo "🔍 Manual token check started"
+        echo "📍 Token URL: $TOKEN_URL"
+        echo "🔔 Force notification: $FORCE_NOTIFICATION"
+        node .github/scripts/check-token.js
