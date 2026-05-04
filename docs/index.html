@@ -241,8 +241,8 @@
 
     <div class="container">
         <div class="header">
-            <h1><i class="fas fa-shield-alt"></i> Token Monitor Dashboard</h1>
-            <p>Theo dõi trạng thái token OAuth2 real-time</p>
+            <h1><i class="fas fa-shield-alt"></i> Token Status Monitor</h1>
+            <p>Theo dõi trạng thái hoạt động của OAuth2 token</p>
         </div>
 
         <div class="dashboard">
@@ -259,12 +259,12 @@
                 </div>
                 <div class="status-info">
                     <div class="info-item">
-                        <div class="info-value" id="daysLeft">--</div>
-                        <div class="info-label">Ngày còn lại</div>
+                        <div class="info-value" id="tokenStatus">--</div>
+                        <div class="info-label">Trạng thái</div>
                     </div>
                     <div class="info-item">
-                        <div class="info-value" id="expiryDate">--</div>
-                        <div class="info-label">Ngày hết hạn</div>
+                        <div class="info-value" id="lastCheck">--</div>
+                        <div class="info-label">Kiểm tra cuối</div>
                     </div>
                 </div>
             </div>
@@ -357,54 +357,23 @@
                 
                 const data = await response.json();
                 
-                // Tìm expiry field
-                const expiryFields = ['expires_at', 'expiry', 'exp', 'expiration', 'expires_in'];
-                let expiryTime = null;
-                
-                for (const field of expiryFields) {
-                    if (data[field]) {
-                        expiryTime = data[field];
-                        break;
-                    }
-                }
-                
-                if (expiryTime) {
-                    let expiryDate;
-                    if (typeof expiryTime === 'number') {
-                        expiryDate = expiryTime > 1000000000000 ? 
-                            new Date(expiryTime) : new Date(expiryTime * 1000);
-                    } else {
-                        expiryDate = new Date(expiryTime);
-                    }
-                    
-                    const now = new Date();
-                    const daysLeft = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
-                    
-                    document.getElementById('daysLeft').textContent = daysLeft;
-                    document.getElementById('expiryDate').textContent = expiryDate.toLocaleDateString('vi-VN');
+                // Kiểm tra có accessToken không
+                if (data.accessToken) {
+                    document.getElementById('tokenStatus').textContent = 'WORKING';
+                    document.getElementById('lastCheck').textContent = new Date().toLocaleTimeString('vi-VN');
                     
                     // Update status icon
                     const statusIcon = document.getElementById('tokenStatusIcon');
-                    const statusIconElement = statusIcon.querySelector('i');
-                    
-                    if (daysLeft <= 0) {
-                        statusIcon.className = 'card-icon status-critical';
-                        statusIconElement.className = 'fas fa-exclamation-triangle';
-                    } else if (daysLeft <= 7) {
-                        statusIcon.className = 'card-icon status-warning';
-                        statusIconElement.className = 'fas fa-exclamation-circle';
-                    } else {
-                        statusIcon.className = 'card-icon status-ok';
-                        statusIconElement.className = 'fas fa-check-circle';
-                    }
+                    statusIcon.className = 'card-icon status-ok';
+                    statusIcon.querySelector('i').className = 'fas fa-check-circle';
                 } else {
-                    throw new Error('Không tìm thấy thông tin expiry');
+                    throw new Error('No access token found');
                 }
                 
             } catch (error) {
                 console.error('Error checking token:', error);
-                document.getElementById('daysLeft').textContent = 'Error';
-                document.getElementById('expiryDate').textContent = 'N/A';
+                document.getElementById('tokenStatus').textContent = 'ERROR';
+                document.getElementById('lastCheck').textContent = new Date().toLocaleTimeString('vi-VN');
                 
                 const statusIcon = document.getElementById('tokenStatusIcon');
                 statusIcon.className = 'card-icon status-critical';
@@ -426,9 +395,9 @@
                 
                 const data = await response.json();
                 
-                // Tìm workflow token expiry check
+                // Tìm workflow token status check
                 const tokenWorkflow = data.workflows?.find(w => 
-                    w.name.includes('Token') || w.path.includes('token-expiry')
+                    w.name.includes('Token') || w.path.includes('token')
                 );
                 
                 if (tokenWorkflow) {
@@ -465,33 +434,27 @@
                 }
             } catch (error) {
                 console.error('Error checking GitHub Actions:', error);
-                document.getElementById('lastRun').textContent = 'Error';
-                document.getElementById('nextRun').textContent = 'N/A';
+                document.getElementById('lastRun').textContent = 'Chưa có dữ liệu';
+                document.getElementById('nextRun').textContent = 'Chưa có dữ liệu';
             }
         }
 
         function updateNotificationStatus() {
-            // Giả lập trạng thái notification (có thể kết nối với API thực tế)
-            document.getElementById('slackStatus').textContent = '✓';
-            document.getElementById('discordStatus').textContent = '✓';
+            // Kiểm tra thực tế từ GitHub Secrets (không thể truy cập trực tiếp)
+            // Hiển thị status dựa trên configuration
+            document.getElementById('slackStatus').innerHTML = '<span style="color: #666;">Chưa xác định</span>';
+            document.getElementById('discordStatus').innerHTML = '<span style="color: #666;">Chưa xác định</span>';
         }
 
-        function generateMockLogs() {
-            const logs = [
-                { time: new Date(), type: 'success', message: 'Token check completed successfully - 45 days remaining' },
-                { time: new Date(Date.now() - 6*60*60*1000), type: 'success', message: 'Token check completed successfully - 45 days remaining' },
-                { time: new Date(Date.now() - 12*60*60*1000), type: 'success', message: 'Token check completed successfully - 45 days remaining' },
-                { time: new Date(Date.now() - 18*60*60*1000), type: 'warning', message: 'Slack notification failed - webhook timeout' },
-                { time: new Date(Date.now() - 24*60*60*1000), type: 'success', message: 'Token check completed successfully - 46 days remaining' }
-            ];
-            
+        function showNoLogsMessage() {
             const logsContainer = document.getElementById('logsContainer');
-            logsContainer.innerHTML = logs.map(log => `
-                <div class="log-entry ${log.type}">
-                    <div class="log-time">${log.time.toLocaleString('vi-VN')}</div>
-                    <div class="log-message">${log.message}</div>
+            logsContainer.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-info-circle"></i><br>
+                    Chưa có activity logs.<br>
+                    <small>Logs sẽ xuất hiện sau khi GitHub Actions chạy.</small>
                 </div>
-            `).join('');
+            `;
         }
 
         async function refreshData() {
@@ -506,7 +469,7 @@
                     checkGitHubActions(),
                     updateNotificationStatus()
                 ]);
-                generateMockLogs();
+                showNoLogsMessage();
             } finally {
                 refreshBtn.innerHTML = originalText;
                 refreshBtn.disabled = false;

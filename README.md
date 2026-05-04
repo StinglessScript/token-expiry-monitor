@@ -1,11 +1,11 @@
-# Token Expiry Monitor
+# Token Status Monitor
 
-GitHub Action để kiểm tra token expiry 24/7 và gửi cảnh báo khi token sắp hết hạn.
+GitHub Action để kiểm tra token status 24/7 và gửi cảnh báo khi token có vấn đề.
 
 ## Tính năng
 
-- ✅ Kiểm tra token expiry mỗi 6 tiếng (có thể tùy chỉnh)
-- 🚨 Cảnh báo đa cấp độ (Critical, Warning, Info)
+- ✅ Kiểm tra token status mỗi 6 tiếng (có thể tùy chỉnh)
+- 🚨 Cảnh báo khi token hết hạn hoặc có lỗi
 - 📱 Hỗ trợ nhiều kênh thông báo (Slack, Discord, Email)
 - 🔄 Tự động retry và error handling
 - 📊 GitHub Actions annotations

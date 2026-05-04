@@ -1,4 +1,4 @@
-name: Token Expiry Check
+name: Token Status Check
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # Cho phép chạy thủ công
 
 jobs:
-  check-token-expiry:
+  check-token-status:
     runs-on: ubuntu-latest
     
     steps:
@@ -22,7 +22,7 @@ jobs:
     - name: Install dependencies
       run: npm install axios
       
-    - name: Check token expiry
+    - name: Check token status
       env:
         TOKEN_URL: ${{ secrets.TOKEN_URL }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
