@@ -50,10 +50,34 @@ Vào repository Settings > Secrets and variables > Actions và thêm các secret
 | ⚠️ WARNING | ≤ 7 ngày | Cần gia hạn sớm |
 | ℹ️ INFO | ≤ 30 ngày | Thông tin theo dõi |
 
-### Token URL hiện tại
+## ⚠️ **Lưu ý quan trọng về Token API**
+
+Token API hiện tại **KHÔNG cung cấp thông tin expiry**:
+```json
+{
+  "accessToken": "4dd0726c-594e-4509-8118-528d8be46deb",
+  "partyId": "20.185466.9361",
+  // ... KHÔNG có expires_at, exp, expiration
+}
 ```
-https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb
-```
+
+## 🔧 **3 Giải pháp thay thế:**
+
+### **Option 1: Token Validity Testing** ⭐ **Recommended**
+- Kiểm tra token bằng cách gọi API protected
+- Phát hiện khi token trả về 401 Unauthorized
+- Workflow: `token-expiry-check.yml` (đã cập nhật)
+
+### **Option 2: Manual Expiry Tracking**
+- Nhập thủ công ngày hết hạn
+- Tính toán countdown dựa trên ngày đã nhập
+- Workflow: `manual-expiry-tracking.yml`
+- Chạy: Actions > Manual Token Expiry Tracking
+
+### **Option 3: JWT Token Analysis**
+- Nếu accessToken là JWT, decode để lấy expiry
+- Script: `.github/scripts/check-jwt-token.js`
+- Test: `node .github/scripts/check-jwt-token.js`
 
 ## Tùy chỉnh
 

@@ -1,0 +1,120 @@
+name: Manual Token Expiry Tracking
+
+on:
+  workflow_dispatch:
+    inputs:
+      expiry_date:
+        description: 'Token expiry date (YYYY-MM-DD HH:MM:SS)'
+        required: true
+        type: string
+        default: '2026-12-31 23:59:59'
+      timezone:
+        description: 'Timezone (e.g., Asia/Ho_Chi_Minh)'
+        required: false
+        type: string
+        default: 'Asia/Ho_Chi_Minh'
+
+jobs:
+  track-expiry:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Calculate time until expiry
+      env:
+        EXPIRY_DATE: ${{ inputs.expiry_date }}
+        TIMEZONE: ${{ inputs.timezone }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        npm install axios moment-timezone
+        
+        cat > check_manual_expiry.js << 'EOF'
+        const axios = require('axios');
+        const moment = require('moment-timezone');
+        
+        const expiryDate = moment.tz(process.env.EXPIRY_DATE, process.env.TIMEZONE);
+        const now = moment();
+        
+        const timeUntilExpiry = expiryDate.diff(now);
+        const daysUntilExpiry = Math.floor(timeUntilExpiry / (1000 * 60 * 60 * 24));
+        const hoursUntilExpiry = Math.floor(timeUntilExpiry / (1000 * 60 * 60));
+        
+        console.log(`⏰ Current time: ${now.format()}`);
+        console.log(`⏰ Expiry time: ${expiryDate.format()}`);
+        console.log(`⏳ Time until expiry: ${daysUntilExpiry} days (${hoursUntilExpiry} hours)`);
+        
+        let alertLevel = 'INFO';
+        let message = '';
+        
+        if (timeUntilExpiry <= 0) {
+          alertLevel = 'CRITICAL';
+          message = `🚨 TOKEN ĐÃ HẾT HẠN! Hết hạn lúc: ${expiryDate.format()}`;
+        } else if (daysUntilExpiry <= 1) {
+          alertLevel = 'CRITICAL';
+          message = `🚨 TOKEN SẮP HẾT HẠN! Còn lại: ${hoursUntilExpiry} giờ`;
+        } else if (daysUntilExpiry <= 7) {
+          alertLevel = 'WARNING';
+          message = `⚠️ Token sẽ hết hạn trong ${daysUntilExpiry} ngày`;
+        } else if (daysUntilExpiry <= 30) {
+          alertLevel = 'INFO';
+          message = `ℹ️ Token còn ${daysUntilExpiry} ngày`;
+        } else {
+          console.log(`✅ Token còn hạn lâu: ${daysUntilExpiry} ngày`);
+          process.exit(0);
+        }
+        
+        console.log(`📢 Alert level: ${alertLevel}`);
+        console.log(`📝 Message: ${message}`);
+        
+        // Send notifications
+        const notifications = [];
+        
+        if (process.env.SLACK_WEBHOOK_URL) {
+          notifications.push(
+            axios.post(process.env.SLACK_WEBHOOK_URL, {
+              text: message,
+              attachments: [{
+                color: alertLevel === 'CRITICAL' ? '#FF0000' : alertLevel === 'WARNING' ? '#FFA500' : '#0099CC',
+                title: `Manual Token Expiry Tracking - ${alertLevel}`,
+                fields: [
+                  { title: 'Expiry Date', value: expiryDate.format(), short: true },
+                  { title: 'Days Left', value: daysUntilExpiry.toString(), short: true }
+                ]
+              }]
+            })
+          );
+        }
+        
+        if (process.env.DISCORD_WEBHOOK_URL) {
+          notifications.push(
+            axios.post(process.env.DISCORD_WEBHOOK_URL, {
+              embeds: [{
+                title: `Manual Token Expiry Tracking - ${alertLevel}`,
+                description: message,
+                color: alertLevel === 'CRITICAL' ? 16711680 : alertLevel === 'WARNING' ? 16753920 : 43775,
+                fields: [
+                  { name: 'Expiry Date', value: expiryDate.format(), inline: true },
+                  { name: 'Days Left', value: daysUntilExpiry.toString(), inline: true }
+                ]
+              }]
+            })
+          );
+        }
+        
+        await Promise.allSettled(notifications);
+        
+        // GitHub annotation
+        const annotation = alertLevel === 'CRITICAL' ? '::error::' : 
+                          alertLevel === 'WARNING' ? '::warning::' : '::notice::';
+        console.log(`${annotation}${message}`);
+        EOF
+        
+        node check_manual_expiry.js
