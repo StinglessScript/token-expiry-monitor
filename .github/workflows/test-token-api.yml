@@ -1,0 +1,31 @@
+name: Test Token API
+
+on:
+  workflow_dispatch: # Chỉ chạy thủ công
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Test Token API Response
+      run: |
+        echo "🔍 Testing token API..."
+        echo "📍 URL: https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb"
+        
+        # Test API response
+        response=$(curl -s "https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb")
+        echo "📄 Raw response:"
+        echo "$response"
+        
+        # Pretty print JSON
+        echo "📋 Formatted JSON:"
+        echo "$response" | jq '.' || echo "Not valid JSON"
+        
+        # Check for expiry fields
+        echo "🔍 Checking for expiry fields..."
+        echo "$response" | jq 'keys[]' | grep -E "(exp|expir)" || echo "❌ No expiry fields found"
+        
+        # List all available fields
+        echo "📝 Available fields:"
+        echo "$response" | jq 'keys[]'

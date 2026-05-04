@@ -48,7 +48,11 @@ async function checkTokenExpiry() {
     
     if (!expiryTime) {
       console.log('⚠️  Không tìm thấy thông tin expiry trong response');
-      await sendNotification('WARNING', 'Không thể xác định thời gian hết hạn của token', tokenData);
+      console.log('📄 Available fields:', Object.keys(tokenData));
+      await sendNotification('WARNING', 'Token API không cung cấp thông tin expiry. Cần kiểm tra thủ công hoặc sử dụng API khác.', {
+        available_fields: Object.keys(tokenData),
+        token_data: tokenData
+      });
       return;
     }
     

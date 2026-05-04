@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Monitor - Simple Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #007bff;
+        }
+        .status-ok { border-left-color: #28a745; }
+        .status-warning { border-left-color: #ffc107; }
+        .status-critical { border-left-color: #dc3545; }
+        .status-unknown { border-left-color: #6c757d; }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .metric:last-child { border-bottom: none; }
+        .label { font-weight: bold; color: #555; }
+        .value { color: #333; }
+        .loading { text-align: center; color: #666; }
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .btn:hover { background: #0056b3; }
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Token Expiry Monitor</h1>
+        
+        <div class="info-box">
+            <strong>Token URL:</strong><br>
+            <small>https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb</small>
+        </div>
+
+        <div class="status-card status-unknown" id="tokenStatus">
+            <h3>🔑 Token Status</h3>
+            <div id="tokenInfo">
+                <div class="loading">Đang kiểm tra token...</div>
+            </div>
+        </div>
+
+        <div class="status-card" id="actionsStatus">
+            <h3>⚙️ GitHub Actions</h3>
+            <div id="actionsInfo">
+                <div class="metric">
+                    <span class="label">Repository:</span>
+                    <span class="value">stinglessscript/token-expiry-monitor</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Workflow:</span>
+                    <span class="value">Token Expiry Check</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Schedule:</span>
+                    <span class="value">Mỗi 6 tiếng (00:00, 06:00, 12:00, 18:00 UTC)</span>
+                </div>
+                <div class="metric">
+                    <span class="label">Status:</span>
+                    <span class="value" id="workflowStatus">Đang kiểm tra...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>🔔 Notifications</h3>
+            <div class="metric">
+                <span class="label">GitHub Actions:</span>
+                <span class="value success">✅ Enabled (Logs & Annotations)</span>
+            </div>
+            <div class="metric">
+                <span class="label">Slack:</span>
+                <span class="value" id="slackStatus">⚙️ Configurable</span>
+            </div>
+            <div class="metric">
+                <span class="label">Discord:</span>
+                <span class="value" id="discordStatus">⚙️ Configurable</span>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <h3>📊 Alert Levels</h3>
+            <div class="metric">
+                <span class="label">🚨 CRITICAL:</span>
+                <span class="value">≤ 1 ngày (Token đã hết hạn hoặc sắp hết hạn)</span>
+            </div>
+            <div class="metric">
+                <span class="label">⚠️ WARNING:</span>
+                <span class="value">≤ 7 ngày (Cần gia hạn sớm)</span>
+            </div>
+            <div class="metric">
+                <span class="label">ℹ️ INFO:</span>
+                <span class="value">≤ 30 ngày (Thông tin theo dõi)</span>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="btn" onclick="checkToken()">🔄 Refresh Token Status</button>
+            <button class="btn" onclick="window.open('https://github.com/stinglessscript/token-expiry-monitor/actions', '_blank')">
+                📊 View GitHub Actions
+            </button>
+        </div>
+
+        <div class="info-box" style="margin-top: 30px;">
+            <strong>ℹ️ Hướng dẫn:</strong><br>
+            • Dashboard này hiển thị thông tin cơ bản về token monitoring system<br>
+            • GitHub Actions sẽ tự động chạy mỗi 6 tiếng để kiểm tra token<br>
+            • Xem chi tiết logs và notifications trong GitHub Actions tab<br>
+            • Setup Slack/Discord webhooks trong repository Secrets để nhận thông báo
+        </div>
+    </div>
+
+    <script>
+        const TOKEN_URL = 'https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb';
+        
+        async function checkToken() {
+            const tokenInfo = document.getElementById('tokenInfo');
+            const tokenStatus = document.getElementById('tokenStatus');
+            
+            tokenInfo.innerHTML = '<div class="loading">Đang kiểm tra token...</div>';
+            
+            try {
+                // Thử gọi trực tiếp trước
+                let response;
+                try {
+                    response = await fetch(TOKEN_URL);
+                } catch (corsError) {
+                    // Nếu CORS lỗi, dùng proxy
+                    console.log('CORS error, trying proxy...');
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                    response = await fetch(proxyUrl + encodeURIComponent(TOKEN_URL));
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Token data:', data);
+                
+                // Tìm expiry field
+                const expiryFields = ['expires_at', 'expiry', 'exp', 'expiration', 'expires_in', 'valid_until', 'not_after'];
+                let expiryTime = null;
+                let expiryField = null;
+                
+                for (const field of expiryFields) {
+                    if (data[field]) {
+                        expiryField = field;
+                        expiryTime = data[field];
+                        break;
+                    }
+                }
+                
+                if (expiryTime) {
+                    let expiryDate;
+                    if (typeof expiryTime === 'number') {
+                        // Kiểm tra xem là seconds hay milliseconds
+                        expiryDate = expiryTime > 1000000000000 ? 
+                            new Date(expiryTime) : new Date(expiryTime * 1000);
+                    } else {
+                        expiryDate = new Date(expiryTime);
+                    }
+                    
+                    if (isNaN(expiryDate.getTime())) {
+                        throw new Error('Invalid date format');
+                    }
+                    
+                    const now = new Date();
+                    const timeLeft = expiryDate.getTime() - now.getTime();
+                    const daysLeft = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+                    
+                    let statusClass = 'status-ok';
+                    let statusText = 'OK';
+                    
+                    if (daysLeft <= 0) {
+                        statusClass = 'status-critical';
+                        statusText = 'EXPIRED';
+                    } else if (daysLeft <= 1) {
+                        statusClass = 'status-critical';
+                        statusText = 'CRITICAL';
+                    } else if (daysLeft <= 7) {
+                        statusClass = 'status-warning';
+                        statusText = 'WARNING';
+                    }
+                    
+                    tokenStatus.className = `status-card ${statusClass}`;
+                    
+                    tokenInfo.innerHTML = `
+                        <div class="metric">
+                            <span class="label">Status:</span>
+                            <span class="value ${statusClass.replace('status-', '')}">${statusText}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Expiry Field:</span>
+                            <span class="value">${expiryField}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Expiry Date:</span>
+                            <span class="value">${expiryDate.toLocaleString('vi-VN')}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Time Remaining:</span>
+                            <span class="value">${daysLeft} ngày (${hoursLeft} giờ)</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Last Check:</span>
+                            <span class="value">${new Date().toLocaleString('vi-VN')}</span>
+                        </div>
+                    `;
+                } else {
+                    tokenStatus.className = 'status-card status-warning';
+                    tokenInfo.innerHTML = `
+                        <div class="metric">
+                            <span class="label">Status:</span>
+                            <span class="value warning">⚠️ NO EXPIRY INFO</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Issue:</span>
+                            <span class="value">API không cung cấp thông tin expiry</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Available Fields:</span>
+                            <span class="value">${Object.keys(data).join(', ')}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Suggestion:</span>
+                            <span class="value">Cần sử dụng API khác hoặc kiểm tra thủ công</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Last Check:</span>
+                            <span class="value">${new Date().toLocaleString('vi-VN')}</span>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error checking token:', error);
+                tokenStatus.className = 'status-card status-critical';
+                tokenInfo.innerHTML = `
+                    <div class="metric">
+                        <span class="label">Error:</span>
+                        <span class="value error">${error.message}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Suggestion:</span>
+                        <span class="value">Kiểm tra GitHub Actions logs để xem chi tiết</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function checkGitHubActions() {
+            try {
+                const response = await fetch('https://api.github.com/repos/stinglessscript/token-expiry-monitor/actions/workflows');
+                const data = await response.json();
+                
+                if (data.workflows && data.workflows.length > 0) {
+                    document.getElementById('workflowStatus').innerHTML = 
+                        `<span class="success">✅ ${data.workflows.length} workflow(s) configured</span>`;
+                } else {
+                    document.getElementById('workflowStatus').innerHTML = 
+                        '<span class="warning">⚠️ No workflows found</span>';
+                }
+            } catch (error) {
+                document.getElementById('workflowStatus').innerHTML = 
+                    '<span class="error">❌ Unable to check (API limit or private repo)</span>';
+            }
+        }
+        
+        // Auto-run on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkToken();
+            checkGitHubActions();
+            
+            // Auto refresh every 5 minutes
+            setInterval(checkToken, 5 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>

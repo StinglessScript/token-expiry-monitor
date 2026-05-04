@@ -235,7 +235,7 @@
     </style>
 </head>
 <body>
-    <a href="https://github.com" class="github-link" target="_blank">
+    <a href="https://github.com/stinglessscript/token-expiry-monitor" class="github-link" target="_blank">
         <i class="fab fa-github"></i> View on GitHub
     </a>
 
@@ -337,9 +337,9 @@
         const TOKEN_URL = 'https://id.dev.longvan.vn/authorization/public/TRUE_DOC/oauth2/api/v1/token/4dd0726c-594e-4509-8118-528d8be46deb';
         const GITHUB_API_BASE = 'https://api.github.com/repos';
         
-        // Thay đổi thông tin repo của bạn
-        const REPO_OWNER = 'your-username';
-        const REPO_NAME = 'your-repo-name';
+        // Thông tin repo của bạn
+        const REPO_OWNER = 'stinglessscript';
+        const REPO_NAME = 'token-expiry-monitor';
 
         let refreshInterval;
 
@@ -347,7 +347,14 @@
             try {
                 document.getElementById('tokenUrl').textContent = TOKEN_URL;
                 
-                const response = await fetch(TOKEN_URL);
+                // Sử dụng proxy để bypass CORS
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const response = await fetch(proxyUrl + encodeURIComponent(TOKEN_URL));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
                 
                 // Tìm expiry field
@@ -402,6 +409,9 @@
                 const statusIcon = document.getElementById('tokenStatusIcon');
                 statusIcon.className = 'card-icon status-critical';
                 statusIcon.querySelector('i').className = 'fas fa-times-circle';
+                
+                // Hiển thị thông báo lỗi
+                document.getElementById('tokenUrl').textContent = `Error: ${error.message}`;
             }
         }
 
@@ -409,6 +419,11 @@
             try {
                 // Kiểm tra workflow runs
                 const response = await fetch(`${GITHUB_API_BASE}/${REPO_OWNER}/${REPO_NAME}/actions/workflows`);
+                
+                if (!response.ok) {
+                    throw new Error('GitHub API not accessible');
+                }
+                
                 const data = await response.json();
                 
                 // Tìm workflow token expiry check
@@ -440,11 +455,17 @@
                         } else {
                             statusIcon.className = 'card-icon status-critical';
                         }
+                    } else {
+                        document.getElementById('lastRun').textContent = 'Chưa chạy';
+                        document.getElementById('nextRun').textContent = 'Đang chờ';
                     }
+                } else {
+                    document.getElementById('lastRun').textContent = 'Workflow not found';
+                    document.getElementById('nextRun').textContent = 'N/A';
                 }
             } catch (error) {
                 console.error('Error checking GitHub Actions:', error);
-                document.getElementById('lastRun').textContent = 'N/A';
+                document.getElementById('lastRun').textContent = 'Error';
                 document.getElementById('nextRun').textContent = 'N/A';
             }
         }
